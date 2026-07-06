@@ -53,3 +53,9 @@ Eventos de hosts arbitrários podem esconder inputs em Shadow DOM fechado. A col
 Cada início cria uma fila nova e `flush()` só reutiliza um envio da mesma sessão. `stop()` aborta o sinal e descarta a fila. Um adaptador próprio deve respeitar `AbortSignal`; uma requisição já iniciada não pode ser desfeita pela SDK.
 
 **Descartado:** compartilhar a promessa de envio entre sessões, o que devolvia o resultado antigo e podia descartar dados da sessão nova.
+
+### D10 · Testar HTTP no navegador real
+
+O cliente HTTP usa `fetch` nativo vinculado ao contexto global. O teste E2E envia para uma rota local simulada e verifica status 503, fila pendente e limpeza em `stop()` nos três engines.
+
+**Descartado:** confiar só em mocks de `fetch`, que não revelaram a exigência de contexto do método nativo.

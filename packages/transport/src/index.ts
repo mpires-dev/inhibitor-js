@@ -74,7 +74,7 @@ export class HttpTransport implements Transport {
     this.maxRetries = options.maxRetries ?? 2;
     if (!Number.isInteger(this.timeoutMs) || this.timeoutMs < 1 || this.timeoutMs > 120_000) throw new RangeError('timeoutMs must be between 1 and 120000');
     if (!Number.isInteger(this.maxRetries) || this.maxRetries < 0 || this.maxRetries > 10) throw new RangeError('maxRetries must be between 0 and 10');
-    this.fetcher = options.fetch ?? globalThis.fetch;
+    this.fetcher = options.fetch ?? globalThis.fetch.bind(globalThis);
     this.random = options.random ?? Math.random;
     if (typeof this.fetcher !== 'function') throw new TypeError('fetch is unavailable');
   }

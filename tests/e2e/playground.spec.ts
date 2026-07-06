@@ -30,3 +30,14 @@ test('mobile layout shows all controls', async ({ page }) => {
   await expect(page.getByText('What can leave the browser?')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
+
+test('local delivery simulator exercises typed failures without network', async ({ page }) => {
+  const posts: string[] = [];
+  page.on('request', request => { if (request.method() === 'POST') posts.push(request.url()); });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start collection' }).click();
+  await page.getByRole('checkbox', { name: 'Offline' }).check();
+  await page.getByRole('button', { name: 'Simulate locally' }).click();
+  await expect(page.getByText('NETWORK_ERROR: Simulated offline state')).toBeVisible();
+  expect(posts).toEqual([]);
+});

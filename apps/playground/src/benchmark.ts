@@ -1,9 +1,13 @@
 import { Inhibitor } from 'inhibitor-js';
 
 declare global {
-  interface Window { runInhibitorBenchmark: (enabled: boolean, iterations: number) => Promise<{ eventWorkMs: number; serializationMs: number; longTasks: number; snapshotBytes: number }> }
+  interface Window {
+    InhibitorFixture: typeof Inhibitor;
+    runInhibitorBenchmark: (enabled: boolean, iterations: number) => Promise<{ eventWorkMs: number; serializationMs: number; longTasks: number; snapshotBytes: number }>;
+  }
 }
 
+window.InhibitorFixture = Inhibitor;
 window.runInhibitorBenchmark = async (enabled, iterations) => {
   const sdk = enabled ? new Inhibitor({ sampling: { pointer: 1 } }) : undefined;
   if (sdk) await sdk.start({ consent: true });

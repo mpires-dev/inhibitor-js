@@ -75,7 +75,8 @@ export class Inhibitor {
           emit: signal => {
             if (controller.signal.aborted || collector.id === 'environment' || collector.id === 'behavior') return;
             if (!/^[a-z][a-zA-Z0-9]{0,31}$/.test(signal.type) || !Number.isSafeInteger(signal.value) || signal.value < 0) return;
-            const metrics = this.emitted[collector.id] ??= {};
+            const metrics = this.emitted[collector.id] ?? {};
+            this.emitted[collector.id] = metrics;
             if (!(signal.type in metrics) && Object.keys(metrics).length >= 16) return;
             metrics[signal.type] = Math.min(Number.MAX_SAFE_INTEGER, (metrics[signal.type] ?? 0) + signal.value);
           },
