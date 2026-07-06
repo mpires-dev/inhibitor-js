@@ -48,6 +48,8 @@ export interface InhibitorOptions {
   transport?: { enabled?: boolean; maxBatchSize?: number; maxQueueSize?: number; flushIntervalMs?: number; timeoutMs?: number; maxRetries?: number; adapter?: Transport };
   plugins?: Collector[];
 }
-export class InhibitorError extends Error {
-  constructor(public readonly code: string, message: string) { super(message); this.name = 'InhibitorError'; }
-}
+export { InhibitorError } from './error.js';
+
+export { validateOptions } from './options.js';
+export type { NormalizedOptions } from './options.js';
+export { parseSessionSnapshot } from './snapshot.js';
