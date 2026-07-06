@@ -65,6 +65,22 @@ describe('browser collectors', () => {
     collector.stop();
   });
 
+  it('discards inputs hidden inside closed shadow roots', () => {
+    const host = document.createElement('div');
+    document.body.appendChild(host);
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const input = document.createElement('input');
+    shadow.appendChild(input);
+    const collector = createBehaviorCollector({ pointerSampleRate: 1, random: () => 0 });
+    collector.start(context());
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'secret', bubbles: true, composed: true }));
+    input.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    expect(collector.snapshot()).toMatchObject({ keyboardEventCount: 0, pointerEventCount: 0 });
+    document.querySelector('#safe')!.dispatchEvent(new Event('pointerdown', { bubbles: true, composed: true }));
+    expect(collector.snapshot().pointerEventCount).toBe(1);
+    collector.stop();
+  });
+
   it('collects only coarse environment fields after start', () => {
     const collector = createEnvironmentCollector();
     expect(collector.snapshot()).toEqual({});

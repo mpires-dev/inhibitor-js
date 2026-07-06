@@ -56,20 +56,23 @@ export function createEnvironmentCollector(): Collector {
 }
 
 const EDITABLE_SELECTOR = 'input,textarea,select,[contenteditable]';
+// Chrome rejects attachShadow() on these native elements. An arbitrary host may
+// conceal an editable control in a closed shadow root, so we cannot trust it.
+const SAFE_INTERACTION_TARGETS = new Set(['BUTTON', 'A', 'LABEL', 'LI', 'IMG', 'SVG', 'CANVAS']);
 
 /** Fail closed when the browser cannot identify the entire event path. */
 function isSafeTarget(event: Event): boolean {
   if (typeof event.composedPath !== 'function') return false;
   const path = event.composedPath();
   if (path.length === 0) return false;
-  let foundElement = false;
+  let firstElement: Element | undefined;
   for (const target of path) {
     if (target instanceof Element) {
-      foundElement = true;
+      firstElement ??= target;
       if (target.matches(EDITABLE_SELECTOR) || target.closest(EDITABLE_SELECTOR)) return false;
     }
   }
-  return foundElement;
+  return firstElement !== undefined && SAFE_INTERACTION_TARGETS.has(firstElement.tagName);
 }
 
 export interface BehaviorCollectorOptions {
