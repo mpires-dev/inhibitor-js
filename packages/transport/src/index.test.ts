@@ -79,4 +79,13 @@ describe('HttpTransport', () => {
     expect(result.error?.code).toBe('ABORTED');
     expect(fetcher).not.toHaveBeenCalled();
   });
+
+  it('aborts a request at the configured timeout', async () => {
+    const fetcher = vi.fn((_url: string, request: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      request.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true });
+    }));
+    const result = await new HttpTransport('https://example.com', { fetch: fetcher as typeof fetch, timeoutMs: 1, maxRetries: 0 }).send([snapshot]);
+    expect(result).toMatchObject({ ok: false, sent: 0, pending: 1, error: { code: 'TIMEOUT' } });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
 });
