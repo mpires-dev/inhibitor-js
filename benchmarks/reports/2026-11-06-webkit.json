@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "1.0",
+  "generatedAt": "2026-11-06T21:21:32.079Z",
+  "sdkVersion": "0.1.0",
+  "hardware": {
+    "cpu": "Apple M1",
+    "logicalCores": 8,
+    "totalMemoryBytes": 17179869184,
+    "freeMemoryBytesAtEnd": 261996544,
+    "os": "darwin",
+    "osRelease": "25.5.0"
+  },
+  "browser": {
+    "engine": "webkit",
+    "version": "27.2"
+  },
+  "fixture": "apps/playground/benchmark.html",
+  "runs": 7,
+  "iterations": 10000,
+  "addedEventWorkMs": {
+    "median": 30,
+    "p95": 33
+  },
+  "serializationMs": {
+    "median": 0,
+    "p95": 1
+  },
+  "results": [
+    {
+      "baseline": {
+        "eventWorkMs": 19,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 49,
+        "serializationMs": 1,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 30
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 14,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 43,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 29
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 14,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 47,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 33
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 14,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 47,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 33
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 13,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 41,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 28
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 13,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 43,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 30
+    },
+    {
+      "baseline": {
+        "eventWorkMs": 13,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 0
+      },
+      "enabled": {
+        "eventWorkMs": 43,
+        "serializationMs": 0,
+        "longTasks": 0,
+        "snapshotBytes": 656
+      },
+      "addedEventWorkMs": 30
+    }
+  ],
+  "limitations": "Synthetic events on this host; not a 30-second low-end device trace or retained heap measurement."
+}

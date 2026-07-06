@@ -41,3 +41,15 @@ As agregações e a fila vivem apenas em memória. Transporte exige `enabled: tr
 O build mede tamanho, e benchmarks registram ambiente e distribuição. A meta de 15 KiB gzip será tratada como alvo até haver base reproduzível.
 
 **Descartado:** declarar orçamento aprovado com base em uma máquina e uma execução.
+
+### D08 · Alvos de interação em lista conservadora
+
+Eventos de hosts arbitrários podem esconder inputs em Shadow DOM fechado. A coleta de interação aceita somente elementos nativos que não hospedam shadow root no teste de Chrome; os demais eventos são descartados. A cobertura menor é explícita.
+
+**Descartado:** confiar apenas em `composedPath()`, que não revela o input dentro de um shadow root fechado.
+
+### D09 · Envio pertence a uma sessão
+
+Cada início cria uma fila nova e `flush()` só reutiliza um envio da mesma sessão. `stop()` aborta o sinal e descarta a fila. Um adaptador próprio deve respeitar `AbortSignal`; uma requisição já iniciada não pode ser desfeita pela SDK.
+
+**Descartado:** compartilhar a promessa de envio entre sessões, o que devolvia o resultado antigo e podia descartar dados da sessão nova.

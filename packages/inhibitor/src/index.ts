@@ -1,4 +1,4 @@
-import { InhibitorError, validateOptions } from '@inhibitor/core';
+import { InhibitorError, parseSessionSnapshot, validateOptions } from '@inhibitor/core';
 import type { Collector, CollectorContext, FlushResult, InhibitorOptions, LifecycleState, SessionSnapshot, Transport } from '@inhibitor/core';
 import { createBehaviorCollector, createEnvironmentCollector } from '@inhibitor/browser';
 import { BoundedQueue, HttpTransport } from '@inhibitor/transport';
@@ -16,12 +16,13 @@ export class Inhibitor {
   private sender?: Transport;
   private timer?: ReturnType<typeof setInterval>;
   private pending: Promise<void> = Promise.resolve();
-  private sending?: Promise<FlushResult>;
+  private sending?: { sessionId: string; promise: Promise<FlushResult> };
   private id = '';
   private startedAt = '';
   private startTime = 0;
   private duration = 0;
   private unsupported: string[] = [];
+  private emitted: Record<string, Record<string, number>> = {};
 
   constructor(private readonly options: InhibitorOptions = {}) {}
   getState(): LifecycleState { return this.state; }
@@ -54,26 +55,37 @@ export class Inhibitor {
       if (typeof window === 'undefined' || typeof document === 'undefined' || typeof crypto === 'undefined' || typeof crypto.randomUUID !== 'function')
         throw new InhibitorError('UNSUPPORTED_ENVIRONMENT', 'A secure browser context is required');
       const config = this.config!;
-      this.queue!.clear();
+      this.queue = new BoundedQueue<SessionSnapshot>(config.transport.maxQueueSize);
       this.id = crypto.randomUUID();
       this.startedAt = new Date().toISOString();
       this.startTime = performance.now();
       this.duration = 0;
       this.unsupported = [];
+      this.emitted = {};
       this.controller = new AbortController();
       this.collectors = [
         ...(config.collect.environment ? [createEnvironmentCollector()] : []),
         ...(config.collect.behavior ? [createBehaviorCollector({ pointerSampleRate: config.sampling.pointer, keyboardTiming: config.sampling.keyboardTiming })] : []),
         ...config.plugins,
       ];
-      const ctx: CollectorContext = { sessionId: this.id, now: () => performance.now(), emit: () => undefined, signal: this.controller.signal };
       for (const collector of this.collectors) {
+        const controller = this.controller;
+        const ctx: CollectorContext = {
+          sessionId: this.id, now: () => performance.now(), signal: controller.signal,
+          emit: signal => {
+            if (controller.signal.aborted || collector.id === 'environment' || collector.id === 'behavior') return;
+            if (!/^[a-z][a-zA-Z0-9]{0,31}$/.test(signal.type) || !Number.isSafeInteger(signal.value) || signal.value < 0) return;
+            const metrics = this.emitted[collector.id] ??= {};
+            if (!(signal.type in metrics) && Object.keys(metrics).length >= 16) return;
+            metrics[signal.type] = Math.min(Number.MAX_SAFE_INTEGER, (metrics[signal.type] ?? 0) + signal.value);
+          },
+        };
         try { await collector.start(ctx); }
         catch { this.unsupported.push(collector.id); try { await collector.stop(); } catch { /* cleanup */ } }
       }
       this.state = 'running';
       if (config.transport.enabled && config.transport.flushIntervalMs > 0)
-        this.timer = setInterval(() => { void this.flush(); }, config.transport.flushIntervalMs);
+        this.timer = setInterval(() => { void this.flush().catch(() => undefined); }, config.transport.flushIntervalMs);
     });
   }
 
@@ -84,6 +96,7 @@ export class Inhibitor {
       this.timer = undefined;
       this.duration = Math.max(0, performance.now() - this.startTime);
       this.controller?.abort();
+      this.sending = undefined;
       for (const collector of this.collectors) { try { await collector.stop(); } catch { this.unsupported.push(collector.id); } }
       this.queue?.clear();
       this.state = 'stopped';
@@ -95,6 +108,7 @@ export class Inhibitor {
     if (this.state !== 'running' && this.state !== 'stopped') throw new InhibitorError('NO_SESSION', 'Start a session first');
     let environment: SessionSnapshot['environment'];
     let behavior: SessionSnapshot['behavior'];
+    const plugins: Record<string, Record<string, number>> = {};
     let sampledEvents = 0;
     for (const collector of this.collectors) {
       if (this.unsupported.includes(collector.id)) continue;
@@ -106,6 +120,13 @@ export class Inhibitor {
           const { sampledEvents: _ignored, ...data } = value;
           behavior = data as SessionSnapshot['behavior'];
         }
+        if (collector.id !== 'environment' && collector.id !== 'behavior') {
+          const metrics = { ...this.emitted[collector.id] };
+          for (const [key, item] of Object.entries(value)) {
+            if (/^[a-z][a-zA-Z0-9]{0,31}$/.test(key) && Number.isSafeInteger(item) && typeof item === 'number' && item >= 0 && Object.keys(metrics).length < 16) metrics[key] = item;
+          }
+          plugins[collector.id] = metrics;
+        }
       } catch { this.unsupported.push(collector.id); }
     }
     const durationMs = this.state === 'running' ? performance.now() - this.startTime : this.duration;
@@ -113,6 +134,7 @@ export class Inhibitor {
       schemaVersion: '1.0', sdk: { name: 'inhibitor-js', version: '0.1.0' },
       session: { id: this.id, startedAt: this.startedAt, durationMs: Math.round(Math.max(0, durationMs)) },
       ...(environment ? { environment } : {}), ...(behavior ? { behavior } : {}),
+      ...(Object.keys(plugins).length ? { plugins } : {}),
       diagnostics: { droppedEvents: this.queue?.dropped ?? 0, sampledEvents, unsupportedCollectors: [...new Set(this.unsupported)] },
     };
   }
@@ -121,19 +143,23 @@ export class Inhibitor {
     await this.pending;
     if (this.state !== 'running') return { ok: false, sent: 0, pending: this.queue?.size ?? 0, error: { code: 'NOT_RUNNING', message: 'Collection is not running' } };
     if (!this.sender) return { ok: false, sent: 0, pending: 0, error: { code: 'TRANSPORT_DISABLED', message: 'Transport is disabled' } };
-    if (this.sending) return this.sending;
+    if (this.sending?.sessionId === this.id) return this.sending.promise;
     const work = this.flushNow();
-    this.sending = work;
-    try { return await work; } finally { this.sending = undefined; }
+    this.sending = { sessionId: this.id, promise: work };
+    try { return await work; } finally { if (this.sending?.promise === work) this.sending = undefined; }
   }
 
   private async flushNow(): Promise<FlushResult> {
     const queue = this.queue!;
-    queue.push(await this.getSessionSignals());
-    const batch = queue.peekBatch(this.config!.transport.maxBatchSize);
-    const result = await this.sender!.send(batch, this.controller?.signal);
-    if (result.ok) queue.dropBatch(batch.length);
-    return { ...result, pending: queue.size };
+    try {
+      queue.push(parseSessionSnapshot(await this.getSessionSignals()));
+      const batch = queue.peekBatch(this.config!.transport.maxBatchSize);
+      const result = await this.sender!.send(batch, this.controller?.signal);
+      if (result.ok) queue.dropBatch(batch.length);
+      return { ...result, pending: queue.size };
+    } catch {
+      return { ok: false, sent: 0, pending: queue.size, error: { code: 'TRANSPORT_ERROR', message: 'Delivery adapter or snapshot validation failed' } };
+    }
   }
 
   dispose(): Promise<void> {
@@ -142,6 +168,7 @@ export class Inhibitor {
       if (this.timer) clearInterval(this.timer);
       this.timer = undefined;
       this.controller?.abort();
+      this.sending = undefined;
       for (const collector of this.collectors) { try { await collector.stop(); } catch { /* cleanup */ } }
       this.collectors = [];
       this.queue?.clear();

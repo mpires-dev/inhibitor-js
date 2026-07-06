@@ -29,7 +29,7 @@ function histogram(value: unknown, path: string): void {
 
 /** Reject unknown fields so accidental content cannot cross a transport boundary. */
 export function parseSessionSnapshot(input: unknown): SessionSnapshot {
-  const root = object(input, 'root', ['schemaVersion', 'sdk', 'session', 'environment', 'behavior', 'diagnostics']);
+  const root = object(input, 'root', ['schemaVersion', 'sdk', 'session', 'environment', 'behavior', 'plugins', 'diagnostics']);
   if (root.schemaVersion !== '1.0') invalid('schemaVersion');
   const sdk = object(root.sdk, 'sdk', ['name', 'version']);
   if (sdk.name !== 'inhibitor-js') invalid('sdk.name');
@@ -59,6 +59,19 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
     count(behavior.visibilityChangeCount, 'behavior.visibilityChangeCount');
     histogram(behavior.pointerIntervalHistogramMs, 'behavior.pointerIntervalHistogramMs');
     histogram(behavior.keyboardIntervalHistogramMs, 'behavior.keyboardIntervalHistogramMs');
+  }
+  if (root.plugins !== undefined) {
+    const plugins = object(root.plugins, 'plugins', Object.keys(root.plugins as object));
+    if (Object.keys(plugins).length > 16) invalid('plugins');
+    for (const [id, raw] of Object.entries(plugins)) {
+      if (!/^[a-z][a-z0-9-]{0,63}$/.test(id) || id === 'environment' || id === 'behavior') invalid(`plugins.${id}`);
+      const metrics = object(raw, `plugins.${id}`, Object.keys(raw as object));
+      if (Object.keys(metrics).length > 16) invalid(`plugins.${id}`);
+      for (const [key, value] of Object.entries(metrics)) {
+        if (!/^[a-z][a-zA-Z0-9]{0,31}$/.test(key)) invalid(`plugins.${id}.${key}`);
+        count(value, `plugins.${id}.${key}`);
+      }
+    }
   }
   const diagnostics = object(root.diagnostics, 'diagnostics', ['droppedEvents', 'sampledEvents', 'unsupportedCollectors']);
   count(diagnostics.droppedEvents, 'diagnostics.droppedEvents');

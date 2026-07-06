@@ -88,6 +88,7 @@ export function validateOptions(options: InhibitorOptions = {}): NormalizedOptio
   if (transportEnabled && !parsedEndpoint && !transport.adapter) invalid('transport requires endpoint or adapter');
   const plugins = root.plugins ?? [];
   if (!Array.isArray(plugins)) invalid('plugins must be an array');
+  if (plugins.length > 16) invalid('plugins must contain at most 16 collectors');
   const ids = new Set<string>(['environment', 'behavior']);
   for (const plugin of plugins) {
     if (typeof plugin !== 'object' || plugin === null || typeof plugin.id !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(plugin.id) || typeof plugin.start !== 'function' || typeof plugin.stop !== 'function' || typeof plugin.snapshot !== 'function') invalid('each plugin needs an id, start(), stop(), snapshot()');

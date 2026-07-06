@@ -29,6 +29,7 @@ export interface SessionSnapshot {
     keyboardIntervalHistogramMs?: Record<string, number>;
     visibilityChangeCount: number;
   };
+  plugins?: Record<string, Record<string, number>>;
   diagnostics: { droppedEvents: number; sampledEvents: number; unsupportedCollectors: string[] };
 }
 export interface FlushResult {
