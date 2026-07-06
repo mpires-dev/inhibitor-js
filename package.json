@@ -1,0 +1,19 @@
+{
+  "name": "inhibitor-js-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.30.1",
+  "scripts": {
+    "build": "pnpm -r --filter './packages/**' build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "dev": "pnpm --filter playground dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
